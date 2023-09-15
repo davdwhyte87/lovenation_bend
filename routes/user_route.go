@@ -6,6 +6,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+
+var (
+	userController *controllers.UserController
+)
+func initializeController(){
+	factoryDAO := GetDAO()
+	userController = &controllers.UserController{
+		FactoryDAO: factoryDAO,
+	}
+}
 func UserRoute(router *gin.Engine)  {
-    router.POST("/user", controllers.CreateUser())
+	// initialize controllers
+	initializeController()
+
+    router.POST("/user", userController.CreateUser())
 }
