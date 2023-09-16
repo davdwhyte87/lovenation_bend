@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"lovenation_bend/configs"
+	"lovenation_bend/models"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -15,10 +16,14 @@ type FactoryDAO struct {
 	ctx         context.Context
 	Collections map[string]*mongo.Collection
 }
- 
+
 // creates and setups a new dao factory
 func InitializeFactory(db *mongo.Client, ctx context.Context) *FactoryDAO {
-	collectionList := []string{"Users", "VisaApplicationAnswers", "VisaApplications"}
+	collectionList := []string{models.UserCollection, models.ApplicationAnswerCollection,
+		models.ApplicationQuestionCollection,
+		models.RoleCollection,
+		models.VisaApplicationCollection,
+	}
 	collections := make(map[string]*mongo.Collection)
 	for _, key := range collectionList {
 		col := configs.GetCollection(db, key)
@@ -58,7 +63,7 @@ func (dao *FactoryDAO) InsertMany(key string, data []interface{}) error {
 }
 
 // get resrouce by id from any collection
-func (dao *FactoryDAO) Get(key string, id string) ( *mongo.SingleResult, error) {
+func (dao *FactoryDAO) Get(key string, id string) (*mongo.SingleResult, error) {
 	collection, ok := dao.Collections[key]
 	if !ok {
 		return nil, errors.New("invalid collection")
@@ -70,11 +75,11 @@ func (dao *FactoryDAO) Get(key string, id string) ( *mongo.SingleResult, error) 
 	// var data bson.M
 
 	result := collection.FindOne(dao.ctx, bson.M{"_id": docID})
-	return  result, nil
+	return result, nil
 }
 
 // update any collection based on id
-func (dao *FactoryDAO)  Update(key string, id string, obj interface{})error{
+func (dao *FactoryDAO) Update(key string, id string, obj interface{}) error {
 	collection, ok := dao.Collections[key]
 	if !ok {
 		return errors.New("invalid collection")
@@ -84,9 +89,8 @@ func (dao *FactoryDAO)  Update(key string, id string, obj interface{})error{
 	return err
 }
 
-
-// get 
+// get
 
 // get by id
 
-// soft  delete 
+// soft  delete

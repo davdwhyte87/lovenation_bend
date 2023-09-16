@@ -32,7 +32,7 @@ func SetupDAO (){
 		Context: context.TODO(),	
 	}
 	VisaApplicationDAO = &dao.VisaApplicationDAO{
-		Collection: configs.GetCollection(configs.DB, models.VisaApplicationsCollection),
+		Collection: configs.GetCollection(configs.DB, models.VisaApplicationCollection),
 		Context: context.TODO(),	
 	}
 }

@@ -10,6 +10,7 @@ type VisaApplication struct {
 	Location   string             `json:"location,omitempty" validate:"required"`
 	Profession string             `json:"profession,omitempty" validate:"required"`
 	Status     ApplicationStatus  `bson:"application_status"`
+	VisaApplicationAnswers []ApplicationAnswer `bson:"visa_application_answers"`
 }
 
 type ApplicationStatus int

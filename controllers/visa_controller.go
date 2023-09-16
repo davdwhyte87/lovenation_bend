@@ -59,11 +59,15 @@ func (visaController VisaController) CreateVisaApplication() gin.HandlerFunc {
 		// assign id to all questions answers
 		applicationAnswers := make([]interface{}, 0)
 		for _, ans := range visaApplicationRequest.ApplicationAnswers {
-			var applicationAnswer models.ApplicationAnswers
+			var applicationAnswer models.ApplicationAnswer
 
+			qid, err := primitive.ObjectIDFromHex(ans.QuestionId)
+			if err != nil {
+				qid = primitive.NewObjectID()
+			}
 			applicationAnswer.ApplicationId = applicationId
 			applicationAnswer.Id = primitive.NewObjectID()
-			applicationAnswer.QuestionId = ans.QuestionId
+			applicationAnswer.QuestionId = qid
 			applicationAnswer.TextAnswer = ans.TextAnswer
 			applicationAnswer.YesNoAnswer = ans.YesNoAnswer
 			applicationAnswers = append(applicationAnswers, applicationAnswer)
@@ -76,7 +80,7 @@ func (visaController VisaController) CreateVisaApplication() gin.HandlerFunc {
 		log.Printf("ans", len(visaApplicationRequest.ApplicationAnswers))
 		// insert all the answers to the questions
 		// visaApplicationAnswersCollection.InsertMany(ctx, applicationAnswers)
-		insertAnsErr := visaController.FactoryDAO.InsertMany(models.VisaApplicationAnswersCollection, applicationAnswers)
+		insertAnsErr := visaController.FactoryDAO.InsertMany(models.ApplicationAnswerCollection, applicationAnswers)
 		if insertAnsErr != nil {
 			c.JSON(http.StatusInternalServerError, responses.GenericResponse{
 				Status:  http.StatusInternalServerError,
@@ -97,7 +101,7 @@ func (visaController VisaController) CreateVisaApplication() gin.HandlerFunc {
 
 		// result, _ := visaApplicationCollection.InsertOne(ctx, visaApplication)
 
-		insertErr := visaController.FactoryDAO.Insert(models.VisaApplicationsCollection, visaApplication)
+		insertErr := visaController.FactoryDAO.Insert(models.VisaApplicationCollection, visaApplication)
 		if insertErr != nil {
 			c.JSON(http.StatusInternalServerError, responses.GenericResponse{
 				Status:  http.StatusInternalServerError,
@@ -137,7 +141,7 @@ func (visaController VisaController) ApproveVisaApplication() gin.HandlerFunc {
 		//TODO JWT
 
 		// get visa application from database
-		va, _ := visaController.FactoryDAO.Get(models.VisaApplicationsCollection, applicationId)
+		va, _ := visaController.FactoryDAO.Get(models.VisaApplicationCollection, applicationId)
 		e := va.Decode(&visaApplication)
 		if e != nil {
 			c.JSON(http.StatusInternalServerError, responses.GenericResponse{
@@ -164,7 +168,7 @@ func (visaController VisaController) ApproveVisaApplication() gin.HandlerFunc {
 
 		// update visa application
 		visaApplication.Status = models.ApplicationStatus(2)
-		err := visaController.FactoryDAO.Update(models.VisaApplicationsCollection, applicationId, visaApplication)
+		err := visaController.FactoryDAO.Update(models.VisaApplicationCollection, applicationId, visaApplication)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, responses.GenericResponse{
 				Status:  http.StatusInternalServerError,
@@ -184,7 +188,57 @@ func (visaController VisaController) ApproveVisaApplication() gin.HandlerFunc {
 
 // get all the visa applications
 func (visacontroller *VisaController) GetAllVisaApplications() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		visacontroller.VisaApplicationDAO.GetAll()
+	return func(c *gin.Context) {
+		result, err := visacontroller.VisaApplicationDAO.GetAll()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, responses.GenericResponse{
+				Status:  http.StatusInternalServerError,
+				Message: "Server Error",
+				Data:    map[string]interface{}{"Data": err.Error()},
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, responses.GenericResponse{
+			Status:  http.StatusOK,
+			Message: "Ok",
+			Data:    map[string]interface{}{"Data": result},
+		})
+		return
+	}
+}
+
+// get a single visa application
+func (visacontroller *VisaController) GetSingleApplication() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		applicationID := c.Param("id")
+
+		applicationIDOBJ, objectIDErr := primitive.ObjectIDFromHex(applicationID)
+		if objectIDErr != nil {
+			c.JSON(http.StatusInternalServerError, responses.GenericResponse{
+				Status:  http.StatusInternalServerError,
+				Message: "Error",
+				Data:    map[string]interface{}{"Data": objectIDErr.Error()},
+			})
+			return
+		}
+
+		// get single from db
+		result, err := visacontroller.VisaApplicationDAO.GetSingle(applicationIDOBJ)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, responses.GenericResponse{
+				Status:  http.StatusInternalServerError,
+				Message: "Server Error",
+				Data:    map[string]interface{}{"Data": err.Error()},
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, responses.GenericResponse{
+			Status:  http.StatusOK,
+			Message: "Ok",
+			Data:    map[string]interface{}{"Data": result},
+		})
+		return
 	}
 }

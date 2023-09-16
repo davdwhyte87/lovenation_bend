@@ -3,11 +3,12 @@ package dao
 import (
 	"context"
 	"fmt"
+	"lovenation_bend/configs"
 	"lovenation_bend/models"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-
 )
 
 
@@ -27,7 +28,7 @@ func (dao *VisaApplicationDAO )UpdateVisaApplication(visaApplication models.Visa
 
 
 // get all visa applications 
-func (dao *VisaApplicationDAO) GetAll (){
+func (dao *VisaApplicationDAO) GetAll () (interface{}, error){
 	pipe := bson.M{
 		"$lookup":bson.M{
 			"from":"VisaApplicationAnswers",
@@ -48,12 +49,81 @@ func (dao *VisaApplicationDAO) GetAll (){
 	cursor, err := dao.Collection.Aggregate(dao.Context, pipeline )
 	if err != nil {
 		println(err.Error())
-		return
+		return nil, err
 	}
 	err = cursor.All(dao.Context, &visaApplications)
 	if err != nil {
 		println(err.Error())
-		return
+		return nil, err
 	}
 	fmt.Printf("%v",visaApplications[0]["application_answers"])
+
+	return visaApplications, nil
+}
+
+func (dao *VisaApplicationDAO) GetSingleX(id primitive.ObjectID)(interface{}, error){
+	match := bson.M{
+		"$match":bson.M{"_id": id },
+	}
+	pipe := bson.M{
+		"$lookup":bson.M{
+			"from":"VisaApplicationAnswers",
+			"foreignField": "application_id",
+			"localField":"_id",
+			"as": "application_answers",
+		},
+	}
+	
+	pipeline := []bson.M{match,pipe}
+	var visaApplications []bson.M
+	cursor, err := dao.Collection.Aggregate(dao.Context, pipeline )
+	if err != nil {
+		println(err.Error())
+		return nil, err
+	}
+	err = cursor.All(dao.Context, &visaApplications)
+	if err != nil {
+		println(err.Error())
+		return nil, err
+	}
+	fmt.Printf("%v",visaApplications[0]["application_answers"])
+
+	return visaApplications, nil
+}
+
+func (dao *VisaApplicationDAO) GetSingle(id primitive.ObjectID)(*models.VisaApplication, error){
+
+	var visaApplication models.VisaApplication
+	err := dao.Collection.FindOne(dao.Context, bson.M{"_id":id} ).Decode(&visaApplication)
+	if err != nil {
+		println(err.Error())
+		return nil, err
+	}
+
+	// get application answers
+	var applicationAnswers []models.ApplicationAnswer
+	applicationAnswersCollection := configs.GetCollection(configs.DB, models.ApplicationAnswerCollection)
+	cursor, err :=applicationAnswersCollection.Find(dao.Context, bson.M{"application_id": visaApplication.Id})
+	if err != nil {
+		return nil, err
+	}
+
+	err =cursor.All(dao.Context, &applicationAnswers )
+	if err != nil {
+		return nil, err
+	}
+	// assign answers data
+	visaApplication.VisaApplicationAnswers = applicationAnswers
+
+	// for each application answer get question data
+	for index, value := range applicationAnswers{
+		// get question
+		
+		var question models.ApplicationQuestion
+		applicationQuestionCollection := configs.GetCollection(configs.DB, models.ApplicationQuestionCollection )
+		applicationQuestionCollection.FindOne(dao.Context, bson.M{"_id":value.QuestionId}).Decode(&question)
+		value.Question = question
+		applicationAnswers[index] = value
+	}
+	return &visaApplication, nil
 }

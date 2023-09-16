@@ -22,4 +22,5 @@ func VisaRoutes(router *gin.Engine){
 	router.POST("/visa_application", visaController.CreateVisaApplication())
 	router.GET("/approve_visa_application/:id", visaController.ApproveVisaApplication())
 	router.GET("visa_applications", visaController.GetAllVisaApplications())	
+	router.GET("/visa_application/:id", visaController.GetSingleApplication())
 }
