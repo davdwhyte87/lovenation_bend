@@ -1,7 +1,8 @@
 package models
 
-
 const (
-	VisaApplicationAnswers = "VisaApplicationAnswers"
-	VisaApplications = "VisaApplications"
+	VisaApplicationAnswersCollection = "VisaApplicationAnswers"
+	VisaApplicationsCollection       = "VisaApplications"
+	UserCollection                   = "Users"
+	RoleCollection = "Roles"
 )

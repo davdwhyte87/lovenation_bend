@@ -8,6 +8,7 @@ type User struct {
 	Location   string             `json:"location,omitempty" validate:"required"`
 	Profession string             `json:"title,omitempty" validate:"required"`
 	Type       UserType           `bson:"user_type"`
+	UserRoleId int                `bson:"user_role_id"`
 }
 
 type UserType int

@@ -9,27 +9,16 @@ import (
 )
 
 
-type UserDAO struct {
+type RoleDAO struct {
 	Collection *mongo.Collection
 	Context context.Context
 }
 
 // get the role for a particular user based on id 
-func (userDAO *UserDAO) GetUserRole(roleID int) ( models.Role){
+func (roleDAO *RoleDAO) GetUserRole(roleID int) ( models.Role){
 	// 
 	var role models.Role
 
-	userDAO.Collection.FindOne(userDAO.Context, bson.M{"_id":roleID} ).Decode(&role)
+	roleDAO.Collection.FindOne(roleDAO.Context, bson.M{"_id":roleID} ).Decode(&role)
 	return role
 }
-
-// insert 
-
-
-// update 
-
-// get 
-
-// get by id
-
-// delete 

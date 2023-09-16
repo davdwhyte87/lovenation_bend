@@ -6,6 +6,7 @@ import (
 	"lovenation_bend/configs"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -56,8 +57,32 @@ func (dao *FactoryDAO) InsertMany(key string, data []interface{}) error {
 	return err
 }
 
+// get resrouce by id from any collection
+func (dao *FactoryDAO) Get(key string, id string) ( *mongo.SingleResult, error) {
+	collection, ok := dao.Collections[key]
+	if !ok {
+		return nil, errors.New("invalid collection")
+	}
 
-// update
+	// c, _ := bson.Marshal(data)
+
+	docID, _ := primitive.ObjectIDFromHex(id)
+	// var data bson.M
+
+	result := collection.FindOne(dao.ctx, bson.M{"_id": docID})
+	return  result, nil
+}
+
+// update any collection based on id
+func (dao *FactoryDAO)  Update(key string, id string, obj interface{})error{
+	collection, ok := dao.Collections[key]
+	if !ok {
+		return errors.New("invalid collection")
+	}
+	docID, _ := primitive.ObjectIDFromHex(id)
+	_, err := collection.UpdateOne(dao.ctx, bson.M{"_id": docID}, bson.M{"$set": obj})
+	return err
+}
 
 
 // get 

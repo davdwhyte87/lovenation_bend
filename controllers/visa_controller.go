@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	"context"
+	// "context"
 	"log"
 	"lovenation_bend/configs"
 	"lovenation_bend/dao"
@@ -9,10 +9,11 @@ import (
 	"lovenation_bend/requests"
 	"lovenation_bend/responses"
 	"net/http"
-	"time"
+
+	// "time"
 
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson"
+	// "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -20,9 +21,11 @@ import (
 var visaApplicationAnswersCollection *mongo.Collection = configs.GetCollection(configs.DB, "VisaApplicationAnswers")
 var visaApplicationCollection *mongo.Collection = configs.GetCollection(configs.DB, "VisaApplications")
 
-
-type VisaController struct{
-	FactoryDAO *dao.FactoryDAO
+type VisaController struct {
+	FactoryDAO         *dao.FactoryDAO
+	UserDAO            *dao.UserDAO
+	RoleDAO            *dao.RoleDAO
+	VisaApplicationDAO *dao.VisaApplicationDAO
 }
 
 func (visaController VisaController) CreateVisaApplication() gin.HandlerFunc {
@@ -58,7 +61,7 @@ func (visaController VisaController) CreateVisaApplication() gin.HandlerFunc {
 		for _, ans := range visaApplicationRequest.ApplicationAnswers {
 			var applicationAnswer models.ApplicationAnswers
 
-			applicationAnswer.ApplicationId = applicationId.String()
+			applicationAnswer.ApplicationId = applicationId
 			applicationAnswer.Id = primitive.NewObjectID()
 			applicationAnswer.QuestionId = ans.QuestionId
 			applicationAnswer.TextAnswer = ans.TextAnswer
@@ -73,12 +76,12 @@ func (visaController VisaController) CreateVisaApplication() gin.HandlerFunc {
 		log.Printf("ans", len(visaApplicationRequest.ApplicationAnswers))
 		// insert all the answers to the questions
 		// visaApplicationAnswersCollection.InsertMany(ctx, applicationAnswers)
-		insertAnsErr := visaController.FactoryDAO.InsertMany(models.VisaApplicationAnswers, applicationAnswers)
+		insertAnsErr := visaController.FactoryDAO.InsertMany(models.VisaApplicationAnswersCollection, applicationAnswers)
 		if insertAnsErr != nil {
 			c.JSON(http.StatusInternalServerError, responses.GenericResponse{
-				Status: http.StatusInternalServerError,
+				Status:  http.StatusInternalServerError,
 				Message: "Error",
-				Data: map[string]interface{}{"data":insertAnsErr.Error()},
+				Data:    map[string]interface{}{"data": insertAnsErr.Error()},
 			})
 			return
 		}
@@ -94,12 +97,12 @@ func (visaController VisaController) CreateVisaApplication() gin.HandlerFunc {
 
 		// result, _ := visaApplicationCollection.InsertOne(ctx, visaApplication)
 
-		insertErr := visaController.FactoryDAO.Insert(models.VisaApplications, visaApplication )
+		insertErr := visaController.FactoryDAO.Insert(models.VisaApplicationsCollection, visaApplication)
 		if insertErr != nil {
 			c.JSON(http.StatusInternalServerError, responses.GenericResponse{
-				Status: http.StatusInternalServerError,
+				Status:  http.StatusInternalServerError,
 				Message: "Error",
-				Data: map[string]interface{}{"data":insertErr.Error()},
+				Data:    map[string]interface{}{"data": insertErr.Error()},
 			})
 			return
 		}
@@ -117,18 +120,71 @@ func (visaController VisaController) ApproveVisaApplication() gin.HandlerFunc {
 		// get id from request
 		applicationId := c.Param("id")
 		var visaApplication models.VisaApplication
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		err := visaApplicationCollection.FindOne(ctx, bson.M{"_id": applicationId}).Decode(&visaApplication)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, responses.UserResponse{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}})
-			return
-		}
+		// ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		// defer cancel()
+		// err := visaApplicationCollection.FindOne(ctx, bson.M{"_id": applicationId}).Decode(&visaApplication)
+		// if err != nil {
+		// 	c.JSON(http.StatusInternalServerError, responses.UserResponse{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}})
+		// 	return
+		// }
 
 		//ctxUpdate, cancelUpdate := context.WithTimeout(context.Background(), 10*time.Second)
 		//defer cancelUpdate()
 		// update the visa application
 		//updateResult, updateErr := visaApplicationCollection.UpdateOne(ctxUpdate, bson.M{"_id"}, &visaApplication)
 
+		// get the role data from the jwt
+		//TODO JWT
+
+		// get visa application from database
+		va, _ := visaController.FactoryDAO.Get(models.VisaApplicationsCollection, applicationId)
+		e := va.Decode(&visaApplication)
+		if e != nil {
+			c.JSON(http.StatusInternalServerError, responses.GenericResponse{
+				Status:  http.StatusInternalServerError,
+				Message: "Server Error",
+				Data:    map[string]interface{}{"Data": "Error Casting"},
+			})
+			return
+		}
+
+		roleID := 1
+
+		// get the particular user role from the database
+		role := visaController.RoleDAO.GetUserRole(roleID)
+		// check if the user can perform that specific action
+		if !role.CanApproveVisaApplications {
+			c.JSON(http.StatusUnauthorized, responses.GenericResponse{
+				Status:  http.StatusUnauthorized,
+				Message: "Unauthorized",
+				Data:    map[string]interface{}{"Data": "No permission"},
+			})
+			return
+		}
+
+		// update visa application
+		visaApplication.Status = models.ApplicationStatus(2)
+		err := visaController.FactoryDAO.Update(models.VisaApplicationsCollection, applicationId, visaApplication)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, responses.GenericResponse{
+				Status:  http.StatusInternalServerError,
+				Message: "Server Error",
+				Data:    map[string]interface{}{"Data": "Error updating"},
+			})
+			return
+		}
+		// done...
+		c.JSON(http.StatusOK, responses.GenericResponse{
+			Status:  http.StatusOK,
+			Message: "Approved",
+			Data:    map[string]interface{}{"Data": applicationId},
+		})
+	}
+}
+
+// get all the visa applications
+func (visacontroller *VisaController) GetAllVisaApplications() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		visacontroller.VisaApplicationDAO.GetAll()
 	}
 }
